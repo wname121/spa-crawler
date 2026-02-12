@@ -4,8 +4,8 @@
 - [How to contribute](./CONTRIBUTING.md)
 - [Code of conduct](./CODE_OF_CONDUCT.md)
 
-A CLI-friendly crawler that can **optionally log in**, **crawl a website**, and **mirror pages + many static assets**
-into a local directory so the result can be served using a static web server (Caddy, Nginx, etc).
+CLI-friendly crawler that can **optionally log in**, **crawl a website**, and **mirror pages + many static assets**
+into a local directory so the result can be served using a static web server.
 
 The project targets modern SPAs and Next.js-style applications where content is rendered dynamically and
 traditional tools like `wget` or `curl` often fail to capture working pages.
