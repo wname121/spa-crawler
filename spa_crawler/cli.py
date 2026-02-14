@@ -159,7 +159,7 @@ def clean_include_exclude_links(
     if not include_links:
         include_links = [_default_include_glob(base_url)]
     if not exclude_links:
-        exclude_links = [re.compile(r".*/api.*")]
+        exclude_links = []
         if login_required:
             exclude_links.append(re.compile(f".*{re.escape(login_path)}.*"))
 
@@ -192,7 +192,7 @@ def clean_ignore_http_error_status_codes(values: list[int] | None) -> list[int]:
     """Return deduplicated ignored HTTP status codes with project defaults."""
     if values:
         return unique_preserve_order(values)
-    return DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES
+    return list(DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES)
 
 
 def clean_api_path_prefixes(values: list[str] | None) -> list[str]:
@@ -203,7 +203,7 @@ def clean_api_path_prefixes(values: list[str] | None) -> list[str]:
             s, param_hint="--api-path-prefix", cleaner=clean_path_prefix
         ),
     )
-    return unique_preserve_order(out) or ["/api"]
+    return unique_preserve_order(out) or []
 
 
 def is_cli_param_error(e: BaseException) -> bool:

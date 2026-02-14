@@ -22,19 +22,19 @@ from spa_crawler.crawler import crawl
 _HTTP_STATUS_CLIENT_ERROR_MIN = 400
 _HTTP_STATUS_SERVER_ERROR_MAX = 599
 
-_INCLUDE_LINKS_HELP = "{base_url}/** glob is used if no include links globs/regexes are provided."
+_INCLUDE_LINKS_HELP = "{base_url}/** glob is used when no include links globs/regexes are provided."
 _EXCLUDE_LINKS_HELP = (
-    ".*{login_path}.* and .*/api.* regexes are used if no exclude links globs/regexes are provided."
+    ".*{login_path}.* regex is used when '--login-required' is true "
+    "and no exclude links globs/regexes are provided."
 )
 _DESIRED_CONCURRENCY_HELP = (
     "Must be greater than or equal to '--min-concurrency' "
     "and less than or equal to '--max-concurrency'."
 )
-_OUT_DIR_HELP = "If changed, it must also be updated in Dockerfile, Makefile, and .gitignore."
+_OUT_DIR_HELP = "When changed, it must also be updated in Dockerfile, Makefile, and .gitignore."
 _IGNORE_HTTP_ERROR_STATUS_CODE_HELP = (
     "Defaults are " + ", ".join(str(code) for code in DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES) + "."
 )
-_API_PATH_PREFIX_HELP = "Default is '/api'."
 
 
 def main(
@@ -70,7 +70,7 @@ def main(
             help=_IGNORE_HTTP_ERROR_STATUS_CODE_HELP,
         ),
     ] = None,
-    api_path_prefix: Annotated[list[str] | None, typer.Option(help=_API_PATH_PREFIX_HELP)] = None,
+    api_path_prefix: Annotated[list[str] | None, typer.Option()] = None,
 ) -> None:
     """Parse CLI options, build ``CrawlConfig``, and run the crawler."""
     login_path_s, login_s, password_s, login_input_selector_s, password_input_selector_s = (

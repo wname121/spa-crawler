@@ -66,12 +66,11 @@ def test_clean_include_exclude_links_defaults() -> None:
     assert include and isinstance(include[0], Glob)
     assert include[0].glob == "https://example.com/**"
     patterns = [p.pattern for p in exclude if isinstance(p, re.Pattern)]
-    assert any(p == ".*/api.*" for p in patterns)
-    assert any("/login" in p for p in patterns)
+    assert patterns == [".*/login.*"]
 
 
 def test_clean_include_exclude_links_defaults_no_double_slash_for_path_base() -> None:
-    include, _ = cli.clean_include_exclude_links(
+    include, exclude = cli.clean_include_exclude_links(
         "https://example.com/app/",
         login_required=False,
         login_path="/login",
@@ -82,6 +81,7 @@ def test_clean_include_exclude_links_defaults_no_double_slash_for_path_base() ->
     )
     assert include and isinstance(include[0], Glob)
     assert include[0].glob == "https://example.com/app/**"
+    assert exclude == []
 
 
 def test_clean_include_exclude_links_custom_and_dedup() -> None:
@@ -147,7 +147,7 @@ def test_clean_ignore_http_error_status_codes() -> None:
 
 
 def test_clean_api_path_prefixes() -> None:
-    assert cli.clean_api_path_prefixes(None) == ["/api"]
+    assert cli.clean_api_path_prefixes(None) == []
     assert cli.clean_api_path_prefixes(["api", "/api", " /v1/ "]) == ["/api", "/v1"]
 
 

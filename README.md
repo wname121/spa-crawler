@@ -98,7 +98,7 @@ Typical serving layout:
 
 The crawler is implemented as:
 
-- async Python function `crawl(config)`
+- Async Python function `crawl(config)`
 - Typer CLI wrapper
 
 Basic flow:
@@ -107,14 +107,21 @@ Basic flow:
 make help
 ```
 
-Then review:
+Then review these files for practical usage examples and deployment templates:
 
 - `Makefile`
 - `Dockerfile`
 - `docker-compose.yml`
 - `Caddyfile`
 
-for practical usage examples and deployment templates.
+---
+
+## CLI filtering defaults
+
+- Include links: `{base_url}/**` when no include filters are provided
+- Exclude links: login regex only (`.*{login_path}.*`) when `--login-required` is `true`
+- API path prefixes: empty by default; add `--api-path-prefix` values if you want API routes excluded
+  from page discovery, asset mirroring, and redirect collection
 
 ---
 
@@ -128,10 +135,12 @@ Example deployment stack included:
 - `Dockerfile`
 - `docker-compose.yml`
 - `Caddyfile`
-- environment configuration via `.env`
+- Environment configuration via `.env`
 
 `Caddyfile` imports `/srv/redirects.caddy`.
 `Dockerfile` creates a no-op placeholder for this file when it is absent.
+`Caddyfile` also normalizes non-`GET`/`HEAD` methods by redirecting them to `GET` with `303` on the same URI
+(helps avoid `405 Method Not Allowed` on static mirrors).
 
 To use HTTP basic authentication with Caddy, generate a password hash:
 
@@ -158,6 +167,7 @@ What must be ported from the `Caddyfile` logic:
 - Asset lookup without query: `/assets{path}` → `/assets{path}.*` → `/assets{path}.bin`
 - Asset lookup with query: `/assets_q{path}/{query}` (with fallback to non-query assets)
 - Header policy: immutable cache for `/_next/*`, no-cache for mirrored HTML pages
+- Method policy: non-`GET`/`HEAD` requests are redirected with `303` to the same URI before static lookup
 
 Redirect support must also be ported:
 
@@ -190,9 +200,9 @@ Authenticated crawling may require manual code adjustments.
 
 At high concurrency levels the crawler may:
 
-- consume large amounts of RAM
-- trigger repeated warnings about memory limits
-- become unstable or slower
+- Consume large amounts of RAM
+- Trigger repeated warnings about memory limits
+- Become unstable or slower
 
 Recommended approach:
 
@@ -215,8 +225,8 @@ CRAWLEE_MAX_USED_MEMORY_RATIO=0.95
 
 Tuning guidance:
 
-- lower values can reduce OOM risk on smaller machines
-- higher values can improve throughput on larger machines, but may increase RAM pressure
+- Lower values can reduce OOM risk on smaller machines
+- Higher values can improve throughput on larger machines, but may increase RAM pressure
 
 ---
 
@@ -225,8 +235,8 @@ Tuning guidance:
 During crawling you may see large amounts of:
 
 - 404 responses
-- failed asset requests
-- transient navigation errors
+- Failed asset requests
+- Transient navigation errors
 
 This is expected behavior for modern SPAs and does not necessarily indicate crawler failure.
 
@@ -240,12 +250,12 @@ The crawler downloads many static assets but **cannot guarantee full asset captu
 
 Some resources may be skipped due to:
 
-- streaming or opaque responses
-- dynamically generated URLs
-- authentication-protected resources
-- browser caching behavior
-- implementation complexity
-- unsafe or ambiguous query strings for static-server mapping
+- Streaming or opaque responses
+- Dynamically generated URLs
+- Authentication-protected resources
+- Browser caching behavior
+- Implementation complexity
+- Unsafe or ambiguous query strings for static-server mapping
 
 The mirrored site may occasionally require manual fixes.
 
@@ -272,9 +282,9 @@ Manual entrypoints may be required.
 
 This means:
 
-- paths never visited during crawl will not have redirect rules
-- ambiguous source URLs may be ignored if confidence is below threshold
-- export keeps only one best target per source URL
+- Paths never visited during crawl will not have redirect rules
+- Ambiguous source URLs may be ignored if confidence is below threshold
+- Export keeps only one best target per source URL
 
 ---
 
@@ -282,14 +292,14 @@ This means:
 
 The project intentionally favors:
 
-- simplicity
-- maintainability
-- ease of experimentation
+- Simplicity
+- Maintainability
+- Ease of experimentation
 
 over:
 
-- perfect site replication
-- exhaustive browser instrumentation
+- Perfect site replication
+- Exhaustive browser instrumentation
 
 ---
 
@@ -307,15 +317,15 @@ Increase rerender timeout to allow DOM stabilization.
 
 Common causes:
 
-- routes exposed only via buttons or JS logic
-- routes hidden in JSON menus
-- conditional client routing
+- Routes exposed only via buttons or JS logic
+- Routes hidden in JSON menus
+- Conditional client routing
 
 Possible fixes:
 
-- add include globs/regexes
-- add manual entrypoints via `--additional-crawl-entrypoint-url`
-- extend URL extraction logic for project-specific patterns
+- Add include globs/regexes
+- Add manual entrypoints via `--additional-crawl-entrypoint-url`
+- Extend URL extraction logic for project-specific patterns
 
 ---
 
@@ -331,9 +341,9 @@ Some resource types cannot be reliably captured and will be skipped.
 
 Recommended configuration:
 
-- concurrency = 1
-- single session pool
-- no session rotation
+- Concurrency = 1
+- Single session pool
+- No session rotation
 
 ---
 
@@ -341,16 +351,16 @@ Recommended configuration:
 
 This project is:
 
-- experimental
-- evolving
-- intentionally pragmatic rather than complete
+- Experimental
+- Evolving
+- Intentionally pragmatic rather than complete
 
 It is useful for:
 
-- offline mirrors
-- testing mirrored SPAs
-- migration experiments
-- static hosting tests
+- Offline mirrors
+- Testing mirrored SPAs
+- Migration experiments
+- Static hosting tests
 
 It is **not** intended as a universal or production-grade website archiving solution.
 
@@ -362,8 +372,8 @@ Only crawl content you are authorized to access and store.
 
 Respect:
 
-- website Terms of Service
-- privacy rules
-- copyright and licensing restrictions
+- Website terms of service
+- Privacy rules
+- Copyright and licensing restrictions
 
 Do not use this tool to extract or redistribute restricted data without permission.

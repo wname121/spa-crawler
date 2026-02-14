@@ -13,6 +13,9 @@ log {
 	format console
 }
 
+@not_get not method GET HEAD
+redir @not_get {scheme}://{hostport}{uri} 303
+
 import /srv/redirects.caddy
 
 @next path /_next/*

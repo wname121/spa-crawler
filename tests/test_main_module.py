@@ -21,7 +21,7 @@ def test_main_builds_config_and_calls_crawl(monkeypatch, capsys) -> None:
     cfg = captured["config"]
     assert cfg.base_url == URL("https://example.com")
     assert cfg.login_required is False
-    assert cfg.api_path_prefixes == ["/api"]
+    assert cfg.api_path_prefixes == []
     out = capsys.readouterr().out
     assert "base_url" in out
 
