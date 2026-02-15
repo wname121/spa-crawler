@@ -6,24 +6,24 @@
 - [How to contribute](./CONTRIBUTING.md)
 - [Code of conduct](./CODE_OF_CONDUCT.md)
 
-A CLI-friendly crawler that can **optionally log in**, **crawl a website**, and **mirror pages and static assets**
-into a local directory so the result can be served by a static web server (Caddy, etc.).
+A CLI-friendly crawler that can **optionally authenticate**, **crawl a website**, and **mirror pages and static assets**
+into a local directory so the result can be served by a static web server.
 
 The project targets modern SPAs and Next.js-style applications where content is rendered dynamically and
-traditional tools like `wget` or `curl` often fail to capture working pages.
+traditional tools like `wget` or `curl` often fail to capture fully working pages.
 
 ---
 
 ## Features
 
 - Optional authentication flow
-  - Fills login/password inputs
+  - Fills in login/password inputs
   - Submits the form
   - Waits for redirect after successful login
 
 - Playwright-based rendering
   - Supports SPAs, hydration, and client-side routing
-  - Handles dynamic content loading
+  - Handles dynamically loaded content
 
 - Mirrors HTML pages
   - Saved to `out/pages/**/index.html`
@@ -35,17 +35,17 @@ traditional tools like `wget` or `curl` often fail to capture working pages.
   - Saved to `out/assets/**` and `out/assets_q/**`
 
 - Single browser session / session pool
-  - Designed to improve reliability for authenticated crawling
+  - Designed to improve reliability during authenticated crawling
 
 - Additional URL discovery
-  - Extracts candidate links from rendered DOM
+  - Extracts candidate links from the rendered DOM
   - Reads Next.js `__NEXT_DATA__` from the page
-  - Reads `/_next/data/**.json` payloads from intercepted responses
+  - Parses `/_next/data/**.json` payloads from intercepted responses
   - Helps discover routes referenced in JSON/JS, not only in `<a>` tags
 
 - Redirect behavior capture (hybrid)
   - Collects HTTP redirect edges from observed 3xx chains
-  - Collects client-side redirects when loaded URL changes in browser
+  - Captures client-side redirects when the loaded URL changes in the browser
   - Exports high-confidence Caddy redirect rules to `out/redirects.caddy`
   - Creates HTML redirect pages for missing source pages as a static-hosting fallback
 
@@ -80,7 +80,7 @@ Typical serving layout:
 - `out/pages` → HTML root
 - `out/pages_q` → query HTML variants (e.g. `/search?page=2`)
 - `out/assets` → static files root (or mounted under `/`, depending on server configuration)
-- `out/assets_q` → query static variants (e.g. `/app.js?v=123`)
+- `out/assets_q` → query-based static variants (e.g. `/app.js?v=123`)
 - `out/redirects.caddy` → generated Caddy `redir` rules from observed redirects
 - `out/pages` and `out/pages_q` may include generated HTML redirect pages for missing sources
 
@@ -100,8 +100,8 @@ Typical serving layout:
 
 The crawler is implemented as:
 
-- Async Python function `crawl(config)`
-- Typer CLI wrapper
+- An async Python function `crawl(config)`
+- A Typer CLI wrapper
 
 Basic flow:
 
@@ -130,7 +130,7 @@ Then review these files for practical usage examples and deployment templates:
 ## Deployment of mirrored site
 
 This project only produces a mirrored static copy of a website.
-You must decide how and where to deploy or serve it.
+You are responsible for deciding how and where to deploy or serve it.
 
 Example deployment stack included:
 
@@ -142,7 +142,7 @@ Example deployment stack included:
 `Caddyfile` imports `/srv/redirects.caddy`.
 `Dockerfile` creates a no-op placeholder for this file when it is absent.
 `Caddyfile` also normalizes non-`GET`/`HEAD` methods by redirecting them to `GET` with `303` on the same URI
-(helps avoid `405 Method Not Allowed` on static mirrors).
+(to avoid `405 Method Not Allowed` errors on static mirrors).
 
 To use HTTP basic authentication with Caddy, generate a password hash:
 
@@ -150,7 +150,7 @@ To use HTTP basic authentication with Caddy, generate a password hash:
 caddy hash-password
 ```
 
-Then set environment variables used by `Caddyfile`:
+Then set the environment variables used by `Caddyfile`:
 
 - `ENABLE_BASIC_AUTH=true`
 - `BASIC_AUTH_USER=<username>`
@@ -159,7 +159,7 @@ Then set environment variables used by `Caddyfile`:
 ### If you want a server other than Caddy
 
 The repository ships only a Caddy serving configuration.
-For any other server, you must re-implement the same URL-to-filesystem lookup behavior.
+For any other server, you must reimplement the same URL-to-filesystem lookup behavior.
 
 What must be ported from the `Caddyfile` logic:
 
@@ -174,7 +174,7 @@ What must be ported from the `Caddyfile` logic:
 Redirect support must also be ported:
 
 - Current export is Caddy-specific (`out/redirects.caddy` with `redir` directives)
-- For another server, add a converter step (from observed redirects to that server syntax)
+- For another server, add a converter step (from observed redirects to that server's syntax)
   or implement a new Python exporter
 - HTML redirect pages in `out/pages` and `out/pages_q` are server-agnostic fallbacks and should still work
   if lookup is ported correctly
@@ -187,7 +187,7 @@ usually requires `njs` or careful `map` + `try_files` composition.
 ## Limitations
 
 This is a hobby / experimental project.
-It aims to handle modern SPAs reasonably well but is **not a fully robust site mirroring solution**.
+It aims to handle modern SPAs reasonably well but is **not a fully robust site-mirroring solution**.
 
 ### Session configuration
 
@@ -209,7 +209,7 @@ At high concurrency levels the crawler may:
 Recommended approach:
 
 - Use low concurrency
-- For authenticated crawling, use concurrency = 1
+- For authenticated crawling, use `concurrency = 1`
 
 ### Hardware tuning
 
@@ -242,13 +242,13 @@ During crawling you may see large amounts of:
 
 This is expected behavior for modern SPAs and does not necessarily indicate crawler failure.
 
-The crawler intentionally prioritizes successful page mirroring rather than eliminating every failed request.
+The crawler intentionally prioritizes successful page mirroring over eliminating every failed request.
 
 ---
 
 ### Not all assets can be mirrored
 
-The crawler downloads many static assets but **cannot guarantee full asset capture**.
+The crawler downloads many static assets but **cannot guarantee complete asset capture**.
 
 Some resources may be skipped due to:
 
@@ -280,17 +280,17 @@ Manual entrypoints may be required.
 
 ### Redirect export is observational
 
-`out/redirects.caddy` and generated HTML redirect pages are based only on redirects observed during crawl.
+`out/redirects.caddy` and generated HTML redirect pages are based only on redirects observed during the crawl.
 
 This means:
 
-- Paths never visited during crawl will not have redirect rules
+- Paths never visited during the crawl will not have redirect rules
 - Ambiguous source URLs may be ignored if confidence is below threshold
-- Export keeps only one best target per source URL
+- Only one best target per source URL is exported
 
 ---
 
-### Stability vs. completeness tradeoff
+### Stability vs. completeness trade-off
 
 The project intentionally favors:
 
@@ -311,7 +311,7 @@ over:
 
 Some SPAs rerender login forms during hydration.
 
-Increase rerender timeout to allow DOM stabilization.
+Increase the rerender timeout to allow DOM stabilization.
 
 ---
 
@@ -346,7 +346,7 @@ instead of being mirrored from raw route interception responses.
 
 Recommended configuration:
 
-- Concurrency = 1
+- `concurrency = 1`
 - Single session pool
 - No session rotation
 
