@@ -34,7 +34,14 @@ async def crawl(config: CrawlConfig) -> None:
         raise ValueError("login_path '/' is not supported when login_required is true.")
 
     verbose = setup_logging(verbose=config.verbose, quiet=config.quiet)
-    redirect_collector = RedirectCollector(config.base_url, config.api_path_prefixes)
+    redirect_collector = RedirectCollector(
+        config.base_url,
+        config.api_path_prefixes,
+        config.max_query_len_for_fs_mapping,
+        config.default_server_redirect_status,
+        config.max_confidence_for_not_export,
+        config.min_redirect_chain_len,
+    )
 
     crawler = PlaywrightCrawler(
         http_client=ImpitHttpClient(),
@@ -57,7 +64,13 @@ async def crawl(config: CrawlConfig) -> None:
     )
 
     async def _discover_and_enqueue_from_page(ctx: PlaywrightCrawlingContext) -> None:
-        urls = await extract_page_urls_via_js(ctx, config.base_url, config.api_path_prefixes)
+        urls = await extract_page_urls_via_js(
+            ctx,
+            config.base_url,
+            config.api_path_prefixes,
+            config.max_url_len,
+            config.candidate_url_trim_chars,
+        )
         if urls:
             await ctx.add_requests(urls)
 
@@ -83,7 +96,12 @@ async def crawl(config: CrawlConfig) -> None:
         finally:
             await close_page(ctx)
 
-    enqueue_transform = transform_enqueue_request(config.base_url, config.api_path_prefixes)
+    enqueue_transform = transform_enqueue_request(
+        config.base_url,
+        config.api_path_prefixes,
+        config.max_url_len,
+        config.candidate_url_trim_chars,
+    )
 
     post_login_entrypoints: list[str | Request] = unique_preserve_order(
         [
@@ -101,7 +119,12 @@ async def crawl(config: CrawlConfig) -> None:
 
         await soft_interaction_pass(ctx)
 
-        await save_html(ctx, config.out_dir, verbose=verbose)
+        await save_html(
+            ctx,
+            config.out_dir,
+            verbose=verbose,
+            max_query_len_for_fs_mapping=config.max_query_len_for_fs_mapping,
+        )
 
         # Extra discovery pass: extract links from DOM/Next.js data.
         try:
@@ -153,7 +176,15 @@ async def crawl(config: CrawlConfig) -> None:
 
         try:
             await attach_route_mirror(
-                ctx, config.base_url, config.out_dir, verbose, config.api_path_prefixes
+                ctx,
+                config.base_url,
+                config.out_dir,
+                verbose,
+                config.api_path_prefixes,
+                config.route_fetch_timeout,
+                config.max_query_len_for_fs_mapping,
+                config.max_url_len,
+                config.candidate_url_trim_chars,
             )
         except Exception as e:
             ctx.log.warning(f"[route-mirror-attach-error] {ctx.request.url}: {e!r}")

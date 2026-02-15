@@ -40,18 +40,22 @@ def test_has_known_extension() -> None:
 
 def test_normalize_candidate_url_valid_and_canonicalized() -> None:
     base = URL("https://example.com")
+    trim_chars = " \t\r\n'\"`"
     assert (
-        url_discovery._normalize_candidate_url(" /docs/ ", base, ["/api"])
+        url_discovery._normalize_candidate_url(" /docs/ ", base, ["/api"], 2048, trim_chars)
         == "https://example.com/docs"
     )
     assert (
-        url_discovery._normalize_candidate_url("https://example.com/docs/#x", base, ["/api"])
+        url_discovery._normalize_candidate_url(
+            "https://example.com/docs/#x", base, ["/api"], 2048, trim_chars
+        )
         == "https://example.com/docs"
     )
 
 
 def test_normalize_candidate_url_rejects_bad_inputs() -> None:
     base = URL("https://example.com")
+    trim_chars = " \t\r\n'\"`"
     too_long = "x" * 2050
     candidates = [
         "",
@@ -68,13 +72,17 @@ def test_normalize_candidate_url_rejects_bad_inputs() -> None:
         "https://example.com/static/logo.png",
     ]
     for candidate in candidates:
-        assert url_discovery._normalize_candidate_url(candidate, base, ["/api"]) is None
+        assert (
+            url_discovery._normalize_candidate_url(candidate, base, ["/api"], 2048, trim_chars)
+            is None
+        )
 
 
 def test_filter_and_normalize_many_sorts_and_dedups() -> None:
     base = URL("https://example.com")
+    trim_chars = " \t\r\n'\"`"
     raw = ["/b", "/a/", "/a", 123, None, "https://other.example.com/x"]
-    assert url_discovery._filter_and_normalize_many(raw, base, ["/api"]) == [
+    assert url_discovery._filter_and_normalize_many(raw, base, ["/api"], 2048, trim_chars) == [
         "https://example.com/a",
         "https://example.com/b",
     ]
@@ -87,7 +95,10 @@ def test_extract_urls_from_json_bytes() -> None:
         "also": "https://example.com/three#frag",
     }
     data = json.dumps(payload).encode("utf-8")
-    out = url_discovery.extract_urls_from_json_bytes(data, URL("https://example.com"), ["/api"])
+    trim_chars = " \t\r\n'\"`"
+    out = url_discovery.extract_urls_from_json_bytes(
+        data, URL("https://example.com"), ["/api"], 2048, trim_chars
+    )
     assert out == [
         "https://example.com/one",
         "https://example.com/three",
@@ -96,33 +107,48 @@ def test_extract_urls_from_json_bytes() -> None:
 
 
 def test_extract_urls_from_json_bytes_invalid_json() -> None:
+    trim_chars = " \t\r\n'\"`"
     assert (
-        url_discovery.extract_urls_from_json_bytes(b"{not-json", URL("https://example.com"), ["/"])
+        url_discovery.extract_urls_from_json_bytes(
+            b"{not-json", URL("https://example.com"), ["/"], 2048, trim_chars
+        )
         == []
     )
-    assert url_discovery.extract_urls_from_json_bytes(b"", URL("https://example.com"), ["/"]) == []
+    assert (
+        url_discovery.extract_urls_from_json_bytes(
+            b"", URL("https://example.com"), ["/"], 2048, trim_chars
+        )
+        == []
+    )
 
 
 def test_extract_page_urls_via_js_success() -> None:
     ctx = _Ctx(_EvalPage(result=["/a", "/b/", "/a"]))
+    trim_chars = " \t\r\n'\"`"
     out = asyncio.run(
-        url_discovery.extract_page_urls_via_js(cast(Any, ctx), URL("https://example.com"), ["/api"])
+        url_discovery.extract_page_urls_via_js(
+            cast(Any, ctx), URL("https://example.com"), ["/api"], 2048, trim_chars
+        )
     )
     assert out == ["https://example.com/a", "https://example.com/b"]
 
 
 def test_extract_page_urls_via_js_failure() -> None:
     ctx = _Ctx(_EvalPage(exc=RuntimeError("boom")))
+    trim_chars = " \t\r\n'\"`"
     with pytest.raises(RuntimeError, match="boom"):
         asyncio.run(
             url_discovery.extract_page_urls_via_js(
-                cast(Any, ctx), URL("https://example.com"), ["/api"]
+                cast(Any, ctx), URL("https://example.com"), ["/api"], 2048, trim_chars
             )
         )
 
 
 def test_transform_enqueue_request() -> None:
-    transform = url_discovery.transform_enqueue_request(URL("https://example.com"), ["/api"])
+    trim_chars = " \t\r\n'\"`"
+    transform = url_discovery.transform_enqueue_request(
+        URL("https://example.com"), ["/api"], 2048, trim_chars
+    )
 
     assert transform(cast(RequestOptions, {"url": "mailto:a@b.com"})) == "skip"
     assert transform(cast(RequestOptions, {"url": "https://other.example.com"})) == "skip"

@@ -28,7 +28,7 @@ check_deps_updates:
 
 .PHONY: check_deps_vuln
 check_deps_vuln:
-	.venv/bin/pysentry-rs --sources pypa,pypi,osv --fail-on low .
+	uv run pysentry-rs --sources pypa,pypi,osv --fail-on low .
 
 .PHONY: help
 help:
@@ -51,18 +51,18 @@ restart: stop start
 
 .PHONY: lint
 lint:
-	.venv/bin/ruff format
-	.venv/bin/ruff check --fix
+	uv run ruff format
+	uv run ruff check --fix
 	docker run --rm -it -v ./Caddyfile:/Caddyfile caddy:alpine caddy fmt --overwrite /Caddyfile
 
 .PHONY: test
 test:
-	.venv/bin/pytest
+	uv run pytest
 
 .PHONY: check_types
 check_types:
-	.venv/bin/ty check .
+	uv run ty check .
 
 .PHONY: check
 check:
-	.venv/bin/prek --all-files --hook-stage pre-commit
+	uv run prek --all-files --hook-stage pre-commit

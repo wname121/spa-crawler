@@ -30,6 +30,8 @@ traditional tools like `wget` or `curl` often fail to capture working pages.
 
 - Mirrors many static assets
   - Examples: `/_next/**`, `*.css`, `*.js`, images, fonts, etc.
+  - Mirrors same-origin non-HTML `document` payloads as assets
+    when frameworks use them for data transport
   - Saved to `out/assets/**` and `out/assets_q/**`
 
 - Single browser session / session pool
@@ -334,6 +336,9 @@ Possible fixes:
 Assets are mirrored using Playwright request interception.
 
 Some resource types cannot be reliably captured and will be skipped.
+
+HTML `document` responses are intentionally stored from DOM snapshots in `out/pages/**`
+instead of being mirrored from raw route interception responses.
 
 ---
 

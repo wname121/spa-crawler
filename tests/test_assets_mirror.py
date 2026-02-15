@@ -83,6 +83,13 @@ def test_guess_extension_from_content_type() -> None:
     assert assets_mirror._guess_extension_from_content_type("text/css; charset=utf-8") == ".css"
 
 
+def test_is_html_content_type() -> None:
+    assert assets_mirror._is_html_content_type("text/html")
+    assert assets_mirror._is_html_content_type("application/xhtml+xml; charset=utf-8")
+    assert not assets_mirror._is_html_content_type("text/x-component")
+    assert not assets_mirror._is_html_content_type(None)
+
+
 def test_destination_for_asset() -> None:
     out = Path("out")
     base = URL("https://example.com")
@@ -94,6 +101,7 @@ def test_destination_for_asset() -> None:
             out,
             content_type="text/css",
             api_path_prefixes=["/api"],
+            max_query_len_for_fs_mapping=8000,
         )
         is None
     )
@@ -104,6 +112,7 @@ def test_destination_for_asset() -> None:
             out,
             content_type="application/json",
             api_path_prefixes=["/api"],
+            max_query_len_for_fs_mapping=8000,
         )
         is None
     )
@@ -114,6 +123,7 @@ def test_destination_for_asset() -> None:
         out,
         content_type="text/css",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert no_suffix == out / "assets/static/app.css"
 
@@ -123,6 +133,7 @@ def test_destination_for_asset() -> None:
         out,
         content_type="application/x-unknown",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert unknown_suffix == out / "assets/static/file.bin"
 
@@ -132,6 +143,7 @@ def test_destination_for_asset() -> None:
         out,
         content_type="text/plain",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert with_suffix == out / "assets/static/app.js"
 
@@ -142,6 +154,7 @@ def test_destination_for_asset() -> None:
         raw_query="v=1",
         content_type="text/css",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert with_query == out / "assets_q/static/app/v=1"
 
@@ -152,6 +165,7 @@ def test_destination_for_asset() -> None:
         raw_query="v=1",
         content_type="text/css",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert root_with_query == out / "assets_q/v=1"
 
@@ -162,6 +176,7 @@ def test_destination_for_asset() -> None:
         raw_query="v=1",
         content_type="text/css",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert dir_with_query == out / "assets_q/static/v=1"
 
@@ -172,6 +187,7 @@ def test_destination_for_asset() -> None:
         raw_query="a//b",
         content_type="text/css",
         api_path_prefixes=["/api"],
+        max_query_len_for_fs_mapping=8000,
     )
     assert unsafe_query is None
 
@@ -196,6 +212,10 @@ def test_attach_route_mirror_document_and_api_paths(tmp_path: Path) -> None:
             tmp_path,
             verbose=True,
             api_path_prefixes=["/api"],
+            route_fetch_timeout=60_000,
+            max_query_len_for_fs_mapping=8000,
+            max_url_len=2048,
+            candidate_url_trim_chars=" \t\r\n'\"`",
         )
     )
     assert callable(ctx.page.route_handler)
@@ -209,14 +229,29 @@ def test_attach_route_mirror_document_and_api_paths(tmp_path: Path) -> None:
             tmp_path,
             verbose=True,
             api_path_prefixes=["/api"],
+            route_fetch_timeout=60_000,
+            max_query_len_for_fs_mapping=8000,
+            max_url_len=2048,
+            candidate_url_trim_chars=" \t\r\n'\"`",
         )
     )
     assert ctx.page.route_handler is route_handler_before
 
-    # Document requests are skipped via ``continue_``.
-    r1 = _Route(_Resp(200, b"ok"))
+    # HTML document requests are fulfilled and skipped from asset mirroring.
+    r1 = _Route(_Resp(200, b"<html></html>", {"content-type": "text/html"}))
     asyncio.run(ctx.page.route_handler(r1, _Req("https://example.com/", "document")))
-    assert r1.continued == 1
+    assert r1.fulfilled
+    assert not (tmp_path / "assets/index.html").exists()
+
+    # Non-HTML document requests are mirrored (e.g. Next.js flight payloads).
+    r_doc_non_html = _Route(_Resp(200, b"payload", {"content-type": "text/x-component"}))
+    asyncio.run(
+        ctx.page.route_handler(
+            r_doc_non_html, _Req("https://example.com/problems?ref=problems&_rsc=abc", "document")
+        )
+    )
+    assert r_doc_non_html.fulfilled
+    assert (tmp_path / "assets_q/problems/ref=problems&_rsc=abc").read_bytes() == b"payload"
 
     # API requests are skipped via ``continue_``.
     r2 = _Route(_Resp(200, b"ok"))
@@ -238,6 +273,10 @@ def test_attach_route_mirror_redirect_and_success_and_error(tmp_path: Path) -> N
             tmp_path,
             verbose=True,
             api_path_prefixes=["/api"],
+            route_fetch_timeout=60_000,
+            max_query_len_for_fs_mapping=8000,
+            max_url_len=2048,
+            candidate_url_trim_chars=" \t\r\n'\"`",
         )
     )
     handler = ctx.page.route_handler
@@ -276,6 +315,10 @@ def test_attach_route_mirror_warnings_without_verbose(
             tmp_path,
             verbose=False,
             api_path_prefixes=["/api"],
+            route_fetch_timeout=60_000,
+            max_query_len_for_fs_mapping=8000,
+            max_url_len=2048,
+            candidate_url_trim_chars=" \t\r\n'\"`",
         )
     )
     handler = ctx.page.route_handler
@@ -301,6 +344,10 @@ def test_attach_route_mirror_dedups_same_url_per_run(tmp_path: Path) -> None:
             tmp_path,
             verbose=False,
             api_path_prefixes=["/api"],
+            route_fetch_timeout=60_000,
+            max_query_len_for_fs_mapping=8000,
+            max_url_len=2048,
+            candidate_url_trim_chars=" \t\r\n'\"`",
         )
     )
     handler = ctx.page.route_handler

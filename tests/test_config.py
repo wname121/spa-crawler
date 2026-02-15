@@ -38,6 +38,13 @@ def test_crawl_config_pretty_str_masks_secrets() -> None:
         quiet=False,
         ignore_http_error_status_codes=[404],
         api_path_prefixes=["/api"],
+        route_fetch_timeout=60_000,
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+        max_url_len=2048,
+        candidate_url_trim_chars=" \t\r\n'\"`",
     )
     rendered = cfg.pretty_str()
     assert "***" in rendered

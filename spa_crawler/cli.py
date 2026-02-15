@@ -1,5 +1,6 @@
 import re
 from collections.abc import Callable
+from typing import cast
 
 import typer
 from crawlee import ConcurrencySettings, Glob
@@ -15,7 +16,7 @@ from spa_crawler.utils import (
 )
 
 
-def _clean_with_param_hint[T](v: str, *, param_hint: str, cleaner: Callable[[str], T]) -> T:
+def _clean_with_param_hint[V, T](v: V, *, param_hint: str, cleaner: Callable[[V], T]) -> T:
     """Run a cleaner and convert any error into ``typer.BadParameter``."""
     try:
         return cleaner(v)
@@ -45,7 +46,9 @@ def _unique_patterns_or_globs(values: list[re.Pattern[str] | Glob]) -> list[re.P
 
 def _clean_regex(v: str, *, param_hint: str) -> re.Pattern[str]:
     """Compile a regex value with CLI-aware validation errors."""
-    return _clean_with_param_hint(v, param_hint=param_hint, cleaner=re.compile)
+    return _clean_with_param_hint(
+        v, param_hint=param_hint, cleaner=cast(Callable[[str], re.Pattern[str]], re.compile)
+    )
 
 
 def _clean_glob(v: str, *, param_hint: str) -> Glob:
@@ -61,6 +64,17 @@ def _default_include_glob(base_url: str) -> Glob:
 def clean_base_url(v: str) -> str:
     """Validate and normalize ``--base-url``."""
     return str(_clean_with_param_hint(v, param_hint="--base-url", cleaner=clean_absolute_http_url))
+
+
+def clean_max_confidence_for_not_export(v: float) -> float:
+    """Validate ``--max-confidence-for-not-export``."""
+
+    def _cleaner(f: float) -> float:
+        if f >= 1.0:
+            raise ValueError("float less than 1.0 is required.")
+        return f
+
+    return _clean_with_param_hint(v, param_hint="--max-confidence-for-not-export", cleaner=_cleaner)
 
 
 def clean_login_options(

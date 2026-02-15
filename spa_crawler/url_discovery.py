@@ -16,9 +16,6 @@ from spa_crawler.utils import (
     path_has_prefix,
 )
 
-_MAX_URL_LEN = 2048
-
-
 type RequestTransformAction = Literal["skip", "unchanged"]
 
 
@@ -28,7 +25,13 @@ def _has_known_extension(path: str | Path) -> bool:
     return bool(p.suffix and mimetypes.guess_type(p.name, strict=False)[0])
 
 
-def _normalize_candidate_url(raw: str, base: URL, api_path_prefixes: Sequence[str]) -> str | None:
+def _normalize_candidate_url(
+    raw: str,
+    base: URL,
+    api_path_prefixes: Sequence[str],
+    max_url_len: int,
+    candidate_url_trim_chars: str,
+) -> str | None:
     """
     Normalize a candidate URL into a canonical same-origin *page* URL.
 
@@ -40,7 +43,7 @@ def _normalize_candidate_url(raw: str, base: URL, api_path_prefixes: Sequence[st
       - Reject configured API prefixes.
       - Reject non-navigational schemes (``mailto:``, ``data:``, etc.).
     """
-    s = clean_candidate_url_text(raw)
+    s = clean_candidate_url_text(raw, candidate_url_trim_chars)
     if not s:
         return None
 
@@ -72,7 +75,7 @@ def _normalize_candidate_url(raw: str, base: URL, api_path_prefixes: Sequence[st
     ):
         return None
 
-    if len(s) > _MAX_URL_LEN:
+    if len(s) > max_url_len:
         return None
 
     try:
@@ -97,7 +100,11 @@ def _normalize_candidate_url(raw: str, base: URL, api_path_prefixes: Sequence[st
 
 
 def _filter_and_normalize_many(
-    raw_urls: list[Any], base_url: URL, api_path_prefixes: Sequence[str]
+    raw_urls: list[Any],
+    base_url: URL,
+    api_path_prefixes: Sequence[str],
+    max_url_len: int,
+    candidate_url_trim_chars: str,
 ) -> list[str]:
     """Normalize a list of raw URL strings into canonical page URLs (dedup + sort)."""
     found: set[str] = set()
@@ -105,14 +112,20 @@ def _filter_and_normalize_many(
     for raw in raw_urls or []:
         if not isinstance(raw, str):
             continue
-        if normalized := _normalize_candidate_url(raw, base_url, api_path_prefixes):
+        if normalized := _normalize_candidate_url(
+            raw, base_url, api_path_prefixes, max_url_len, candidate_url_trim_chars
+        ):
             found.add(normalized)
 
     return sorted(found)
 
 
 def extract_urls_from_json_bytes(
-    data: bytes, base_url: URL, api_path_prefixes: Sequence[str]
+    data: bytes,
+    base_url: URL,
+    api_path_prefixes: Sequence[str],
+    max_url_len: int,
+    candidate_url_trim_chars: str,
 ) -> list[str]:
     """
     Extract crawlable page URLs from a JSON payload by walking all string values.
@@ -138,7 +151,9 @@ def extract_urls_from_json_bytes(
             continue
 
         if isinstance(v, str):
-            if normalized := _normalize_candidate_url(v, base_url, api_path_prefixes):
+            if normalized := _normalize_candidate_url(
+                v, base_url, api_path_prefixes, max_url_len, candidate_url_trim_chars
+            ):
                 found.add(normalized)
             continue
 
@@ -154,7 +169,11 @@ def extract_urls_from_json_bytes(
 
 
 async def extract_page_urls_via_js(
-    ctx: PlaywrightCrawlingContext, base_url: URL, api_path_prefixes: Sequence[str]
+    ctx: PlaywrightCrawlingContext,
+    base_url: URL,
+    api_path_prefixes: Sequence[str],
+    max_url_len: int,
+    candidate_url_trim_chars: str,
 ) -> list[str]:
     """
     Extract candidate URLs from the page via JS:
@@ -164,11 +183,13 @@ async def extract_page_urls_via_js(
     """
     raw_urls: list[Any] = await ctx.page.evaluate(load_js("extract_page_urls.js"))
 
-    return _filter_and_normalize_many(raw_urls, base_url, api_path_prefixes)
+    return _filter_and_normalize_many(
+        raw_urls, base_url, api_path_prefixes, max_url_len, candidate_url_trim_chars
+    )
 
 
 def transform_enqueue_request(
-    base_url: URL, api_path_prefixes: Sequence[str]
+    base_url: URL, api_path_prefixes: Sequence[str], max_url_len: int, candidate_url_trim_chars: str
 ) -> Callable[[RequestOptions], RequestTransformAction | RequestOptions]:
     """
     Crawlee enqueue transform:
@@ -181,7 +202,9 @@ def transform_enqueue_request(
         if not isinstance(raw, str):
             return "skip"
 
-        normalized = _normalize_candidate_url(raw, base_url, api_path_prefixes)
+        normalized = _normalize_candidate_url(
+            raw, base_url, api_path_prefixes, max_url_len, candidate_url_trim_chars
+        )
         if not normalized:
             return "skip"
 

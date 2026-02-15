@@ -5,7 +5,6 @@ from crawlee.crawlers import PlaywrightCrawlingContext, PlaywrightPreNavCrawling
 from playwright.async_api import Download
 from yarl import URL
 
-from spa_crawler.constants import MAX_QUERY_LEN_FOR_FS_MAPPING
 from spa_crawler.js_scripts import load_js
 from spa_crawler.utils import (
     raw_query_from_url,
@@ -45,7 +44,9 @@ def maybe_attach_download_hook(
         ctx.page.on("download", _on_download)
 
 
-async def save_html(ctx: PlaywrightCrawlingContext, out_dir: Path, verbose: bool) -> None:
+async def save_html(
+    ctx: PlaywrightCrawlingContext, out_dir: Path, verbose: bool, max_query_len_for_fs_mapping: int
+) -> None:
     """Save the current DOM snapshot as pages/<path>/index.html."""
     loaded_url = ctx.request.loaded_url or ctx.request.url
     url = URL(loaded_url)
@@ -53,7 +54,7 @@ async def save_html(ctx: PlaywrightCrawlingContext, out_dir: Path, verbose: bool
     raw_q = raw_query_from_url(loaded_url)
 
     if raw_q:
-        query_rel = safe_relative_path_for_query(raw_q, max_len=MAX_QUERY_LEN_FOR_FS_MAPPING)
+        query_rel = safe_relative_path_for_query(raw_q, max_len=max_query_len_for_fs_mapping)
         if query_rel is None:
             ctx.log.warning(f"[save-skipped-unsafe-query] {url!s}")
             return

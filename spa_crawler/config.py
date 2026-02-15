@@ -40,6 +40,13 @@ class CrawlConfig:
     quiet: bool
     ignore_http_error_status_codes: list[int]
     api_path_prefixes: list[str]
+    route_fetch_timeout: int
+    max_query_len_for_fs_mapping: int
+    default_server_redirect_status: int
+    max_confidence_for_not_export: float
+    min_redirect_chain_len: int
+    max_url_len: int
+    candidate_url_trim_chars: str
 
     def pretty_str(self) -> str:
         """Render config for console output with sensitive values masked."""

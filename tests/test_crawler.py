@@ -147,7 +147,15 @@ class _FakePlaywrightCrawler:
 class _FakeRedirectCollector:
     last_instance: ClassVar["_FakeRedirectCollector | None"] = None
 
-    def __init__(self, base_url: URL, api_path_prefixes: list[str]) -> None:
+    def __init__(
+        self,
+        base_url: URL,
+        api_path_prefixes: list[str],
+        max_query_len_for_fs_mapping: int,  # noqa: ARG002
+        default_server_redirect_status: int,  # noqa: ARG002
+        max_confidence_for_not_export: float,  # noqa: ARG002
+        min_redirect_chain_len: int,  # noqa: ARG002
+    ) -> None:
         self.base_url = base_url
         self.api_path_prefixes = api_path_prefixes
         self.http_calls = 0
@@ -195,6 +203,13 @@ def _make_config(**overrides: Any) -> CrawlConfig:
         quiet=False,
         ignore_http_error_status_codes=[404],
         api_path_prefixes=["/api"],
+        route_fetch_timeout=60_000,
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+        max_url_len=2048,
+        candidate_url_trim_chars=" \t\r\n'\"`",
     )
     return replace(base, **overrides)
 
@@ -442,6 +457,24 @@ def test_crawl_logs_redirect_observe_and_export_errors(
         return []
 
     class _FailingRedirectCollector(_FakeRedirectCollector):
+        def __init__(
+            self,
+            base_url: URL,
+            api_path_prefixes: list[str],
+            max_query_len_for_fs_mapping: int,
+            default_server_redirect_status: int,
+            max_confidence_for_not_export: float,
+            min_redirect_chain_len: int,
+        ) -> None:
+            super().__init__(
+                base_url,
+                api_path_prefixes,
+                max_query_len_for_fs_mapping,
+                default_server_redirect_status,
+                max_confidence_for_not_export,
+                min_redirect_chain_len,
+            )
+
         async def observe_http_redirects_from_response(self, _response: Any) -> None:
             raise RuntimeError("http redirect observe boom")
 

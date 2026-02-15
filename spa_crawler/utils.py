@@ -4,7 +4,6 @@ from urllib.parse import urlsplit
 
 from yarl import URL
 
-_CANDIDATE_URL_TRIM_CHARS = " \t\r\n'\"`"
 _ASCII_CONTROL_MAX = 31
 _ASCII_DELETE = 127
 
@@ -89,11 +88,11 @@ def is_absolute_http_url(u: URL) -> bool:
     return u.scheme in {"http", "https"} and bool(u.host)
 
 
-def clean_candidate_url_text(raw: str | None) -> str | None:
+def clean_candidate_url_text(raw: str | None, candidate_url_trim_chars: str) -> str | None:
     """Trim candidate URL text and strip wrapper quote-like characters."""
     if raw is None:
         return None
-    s = raw.strip().strip(_CANDIDATE_URL_TRIM_CHARS)
+    s = raw.strip().strip(candidate_url_trim_chars)
     return s or None
 
 

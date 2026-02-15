@@ -9,11 +9,7 @@ from typing import Any
 
 from yarl import URL
 
-from spa_crawler.constants import (
-    HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE,
-    HTTP_STATUS_REDIRECT_MIN,
-    MAX_QUERY_LEN_FOR_FS_MAPPING,
-)
+from spa_crawler.constants import HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE, HTTP_STATUS_REDIRECT_MIN
 from spa_crawler.url_discovery import looks_like_api_path
 from spa_crawler.utils import (
     canonicalize_page_url,
@@ -21,10 +17,6 @@ from spa_crawler.utils import (
     safe_relative_path_for_page,
     safe_relative_path_for_query,
 )
-
-_MIN_REDIRECT_CHAIN_LEN = 2
-_MAX_CONFIDENCE_FOR_NOT_EXPORT = 0.5
-_DEFAULT_SERVER_REDIRECT_STATUS = 302
 
 
 def _normalize_redirect_url(
@@ -116,9 +108,21 @@ class RedirectCollector:
       - Client-side redirects (URL changed after page loaded).
     """
 
-    def __init__(self, base_url: URL, api_path_prefixes: Sequence[str]) -> None:
+    def __init__(
+        self,
+        base_url: URL,
+        api_path_prefixes: Sequence[str],
+        max_query_len_for_fs_mapping: int,
+        default_server_redirect_status: int,
+        max_confidence_for_not_export: float,
+        min_redirect_chain_len: int,
+    ) -> None:
         self._base_url = base_url
         self._api_path_prefixes = list(api_path_prefixes)
+        self._max_query_len_for_fs_mapping = max_query_len_for_fs_mapping
+        self._default_server_redirect_status = default_server_redirect_status
+        self._max_confidence_for_not_export = max_confidence_for_not_export
+        self._min_redirect_chain_len = min_redirect_chain_len
         self._http_targets: dict[str, Counter[str]] = defaultdict(Counter)
         self._http_statuses: dict[tuple[str, str], Counter[int]] = defaultdict(Counter)
         self._client_targets: dict[str, Counter[str]] = defaultdict(Counter)
@@ -130,7 +134,7 @@ class RedirectCollector:
             return
 
         chain = _redirect_chain(request)
-        if len(chain) < _MIN_REDIRECT_CHAIN_LEN:
+        if len(chain) < self._min_redirect_chain_len:
             return
 
         for source_req, target_req in pairwise(chain):
@@ -203,7 +207,7 @@ class RedirectCollector:
                     _RedirectCandidate(
                         source=source,
                         target=target,
-                        status=_DEFAULT_SERVER_REDIRECT_STATUS,
+                        status=self._default_server_redirect_status,
                         confidence=self._confidence(targets, target),
                         seen=seen,
                         kind_priority=1,
@@ -213,9 +217,12 @@ class RedirectCollector:
         return candidates
 
     def _select_redirects_for_export(
-        self, *, max_confidence_for_not_export: float = _MAX_CONFIDENCE_FOR_NOT_EXPORT
+        self, *, max_confidence_for_not_export: float | None = None
     ) -> list[_RedirectCandidate]:
         buckets: dict[str, list[_RedirectCandidate]] = defaultdict(list)
+        if max_confidence_for_not_export is None:
+            max_confidence_for_not_export = self._max_confidence_for_not_export
+
         for candidate in self._redirect_candidates():
             # Export only strict-majority candidates.
             if candidate.confidence <= max_confidence_for_not_export:
@@ -234,12 +241,12 @@ class RedirectCollector:
         return selected
 
     def write_server_redirect_rules(
-        self,
-        out_dir: Path,
-        *,
-        max_confidence_for_not_export: float = _MAX_CONFIDENCE_FOR_NOT_EXPORT,
+        self, out_dir: Path, *, max_confidence_for_not_export: float | None = None
     ) -> Path:
         """Write Caddy redirect snippets based on best observed redirects."""
+        if max_confidence_for_not_export is None:
+            max_confidence_for_not_export = self._max_confidence_for_not_export
+
         selected = self._select_redirects_for_export(
             max_confidence_for_not_export=max_confidence_for_not_export
         )
@@ -280,12 +287,12 @@ class RedirectCollector:
         return caddy_path
 
     def write_html_redirect_pages(
-        self,
-        out_dir: Path,
-        *,
-        max_confidence_for_not_export: float = _MAX_CONFIDENCE_FOR_NOT_EXPORT,
+        self, out_dir: Path, *, max_confidence_for_not_export: float | None = None
     ) -> dict[str, int]:
         """Write HTML redirect pages for selected redirects (only when source page is absent)."""
+        if max_confidence_for_not_export is None:
+            max_confidence_for_not_export = self._max_confidence_for_not_export
+
         selected = self._select_redirects_for_export(
             max_confidence_for_not_export=max_confidence_for_not_export
         )
@@ -301,7 +308,7 @@ class RedirectCollector:
             source_q = source.raw_query_string
             if source_q:
                 query_rel = safe_relative_path_for_query(
-                    source_q, max_len=MAX_QUERY_LEN_FOR_FS_MAPPING
+                    source_q, max_len=self._max_query_len_for_fs_mapping
                 )
                 if query_rel is None:
                     skipped_unsafe_query += 1

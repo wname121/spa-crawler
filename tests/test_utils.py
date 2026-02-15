@@ -40,10 +40,11 @@ def test_is_absolute_http_url() -> None:
 
 
 def test_clean_candidate_url_text() -> None:
-    assert utils.clean_candidate_url_text(None) is None
-    assert utils.clean_candidate_url_text("   ") is None
-    assert utils.clean_candidate_url_text("  'https://e.com/x'  ") == "https://e.com/x"
-    assert utils.clean_candidate_url_text('  "https://e.com/x"  ') == "https://e.com/x"
+    trim_chars = " \t\r\n'\"`"
+    assert utils.clean_candidate_url_text(None, trim_chars) is None
+    assert utils.clean_candidate_url_text("   ", trim_chars) is None
+    assert utils.clean_candidate_url_text("  'https://e.com/x'  ", trim_chars) == "https://e.com/x"
+    assert utils.clean_candidate_url_text('  "https://e.com/x"  ', trim_chars) == "https://e.com/x"
 
 
 def test_clean_path_prefix_valid() -> None:

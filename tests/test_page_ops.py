@@ -160,7 +160,11 @@ def test_dismiss_overlays_swallows_errors() -> None:
 def test_save_html_without_query(tmp_path: Path) -> None:
     page = _Page("https://example.com", html="<html>ok</html>")
     ctx = _Ctx(page, _Req("https://example.com"))
-    asyncio.run(page_ops.save_html(cast(Any, ctx), tmp_path, verbose=True))
+    asyncio.run(
+        page_ops.save_html(
+            cast(Any, ctx), tmp_path, verbose=True, max_query_len_for_fs_mapping=8000
+        )
+    )
     assert (tmp_path / "pages/index.html").read_text(encoding="utf-8") == "<html>ok</html>"
     assert ctx.log.info_msgs
 
@@ -168,14 +172,22 @@ def test_save_html_without_query(tmp_path: Path) -> None:
 def test_save_html_with_query(tmp_path: Path) -> None:
     page = _Page("https://example.com/a")
     ctx = _Ctx(page, _Req("https://example.com/a?x=1"))
-    asyncio.run(page_ops.save_html(cast(Any, ctx), tmp_path, verbose=False))
+    asyncio.run(
+        page_ops.save_html(
+            cast(Any, ctx), tmp_path, verbose=False, max_query_len_for_fs_mapping=8000
+        )
+    )
     assert (tmp_path / "pages_q/a/x=1/index.html").exists()
 
 
 def test_save_html_skips_unsafe_query(tmp_path: Path) -> None:
     page = _Page("https://example.com/a")
     ctx = _Ctx(page, _Req("https://example.com/a?a//b"))
-    asyncio.run(page_ops.save_html(cast(Any, ctx), tmp_path, verbose=False))
+    asyncio.run(
+        page_ops.save_html(
+            cast(Any, ctx), tmp_path, verbose=False, max_query_len_for_fs_mapping=8000
+        )
+    )
     assert not (tmp_path / "pages_q").exists()
     assert ctx.log.warning_msgs
 
@@ -183,7 +195,11 @@ def test_save_html_skips_unsafe_query(tmp_path: Path) -> None:
 def test_save_html_logs_exception_on_write_failure(tmp_path: Path) -> None:
     page = _Page("https://example.com", content_exc=RuntimeError("fail"))
     ctx = _Ctx(page, _Req("https://example.com"))
-    asyncio.run(page_ops.save_html(cast(Any, ctx), tmp_path, verbose=True))
+    asyncio.run(
+        page_ops.save_html(
+            cast(Any, ctx), tmp_path, verbose=True, max_query_len_for_fs_mapping=8000
+        )
+    )
     assert ctx.log.exception_msgs
 
 

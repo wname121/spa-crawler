@@ -1,6 +1,7 @@
 import contextlib
 import mimetypes
 from collections.abc import Sequence
+from email.message import Message
 from pathlib import Path
 
 from crawlee.crawlers import PlaywrightCrawlingContext, PlaywrightPreNavCrawlingContext
@@ -8,11 +9,7 @@ from playwright.async_api import Request as PWRequest
 from playwright.async_api import Route
 from yarl import URL
 
-from spa_crawler.constants import (
-    HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE,
-    HTTP_STATUS_REDIRECT_MIN,
-    MAX_QUERY_LEN_FOR_FS_MAPPING,
-)
+from spa_crawler.constants import HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE, HTTP_STATUS_REDIRECT_MIN
 from spa_crawler.url_discovery import extract_urls_from_json_bytes, looks_like_api_path
 from spa_crawler.utils import (
     raw_query_from_url,
@@ -22,14 +19,29 @@ from spa_crawler.utils import (
 )
 
 _HTTP_STATUS_SUCCESS_MIN = 200
-_ROUTE_FETCH_TIMEOUT_MS = 60_000
+
+
+def _media_type_from_content_type(content_type: str | None) -> str | None:
+    """Parse and normalize media type from a Content-Type header."""
+    if not content_type:
+        return None
+    try:
+        msg = Message()
+        msg["content-type"] = content_type
+        media_type = msg.get_content_type()
+    except Exception:
+        return None
+    return media_type.lower() if media_type else None
+
+
+def _is_html_content_type(content_type: str | None) -> bool:
+    """Return ``True`` for HTML document content types."""
+    return _media_type_from_content_type(content_type) in {"text/html", "application/xhtml+xml"}
 
 
 def _guess_extension_from_content_type(content_type: str | None) -> str:
     """Best-effort extension from Content-Type header (empty if unknown)."""
-    if not content_type:
-        return ""
-    ct = content_type.split(";", 1)[0].strip().lower()
+    ct = _media_type_from_content_type(content_type)
     if not ct:
         return ""
     ext = mimetypes.guess_extension(ct, strict=False) or ""
@@ -45,13 +57,14 @@ def _destination_for_asset(
     raw_query: str | None = None,
     content_type: str | None,
     api_path_prefixes: Sequence[str],
+    max_query_len_for_fs_mapping: int,
 ) -> Path | None:
     """
-    Resolve a destination path for an asset response.
+    Resolve a destination path for a mirrored response.
 
-    We aim for a "complete SPA scrape":
-      - Save all same-origin non-document responses.
-      - Skip API responses (configurable via ``api_path_prefixes``).
+    Selection (what is mirrored vs skipped) is handled by ``attach_route_mirror``.
+    This function only maps an already-selected response URL to the filesystem,
+    and still skips configured API path prefixes defensively.
 
     Query strategy (needed for Caddy mapping without rewriting HTML):
       - Query assets -> ``out_dir/assets_q/<path>/<raw_query>`` (no extension rewriting).
@@ -70,7 +83,7 @@ def _destination_for_asset(
     if raw_q:
         # Important: do not change the query string; Caddy looks up ``{query}`` verbatim.
         # If query is unsafe/unmappable, skip saving this asset entirely.
-        query_rel = safe_relative_path_for_query(raw_q, max_len=MAX_QUERY_LEN_FOR_FS_MAPPING)
+        query_rel = safe_relative_path_for_query(raw_q, max_len=max_query_len_for_fs_mapping)
         if query_rel is None:
             return None
 
@@ -109,11 +122,17 @@ async def attach_route_mirror(
     out_dir: Path,
     verbose: bool,
     api_path_prefixes: Sequence[str],
+    route_fetch_timeout: int,
+    max_query_len_for_fs_mapping: int,
+    max_url_len: int,
+    candidate_url_trim_chars: str,
 ) -> None:
     """
-    Attach a Playwright route handler that mirrors all non-document responses to disk.
+    Attach a Playwright route handler that mirrors responses to disk.
 
-    This is the main mechanism for "download all assets" without parsing HTML.
+    Main behavior mirrors non-document responses. For ``document`` requests,
+    mirroring is decided by response ``Content-Type``: HTML documents are skipped,
+    non-HTML payloads are mirrored.
     """
     if getattr(ctx.page, "_route_mirror_attached", False):
         return
@@ -122,11 +141,6 @@ async def attach_route_mirror(
     inflight_urls: set[str] = set()
 
     async def handle_route(route: Route, request: PWRequest) -> None:
-        # HTML documents are saved from DOM via save_html().
-        if request.resource_type == "document":
-            await route.continue_()
-            return
-
         url = URL(request.url)
         raw_q = raw_query_from_url(request.url)
         url_key = str(url)
@@ -136,7 +150,7 @@ async def attach_route_mirror(
             await route.continue_()
             return
 
-        # Skip API endpoints early (avoid downloading huge JSON responses).
+        # Skip API endpoints early when such prefixes are configured.
         if looks_like_api_path(url.path or "/", api_path_prefixes):
             await route.continue_()
             return
@@ -146,26 +160,28 @@ async def attach_route_mirror(
             await route.continue_()
             return
 
-        destination_hint = _destination_for_asset(
-            url,
-            base_url,
-            out_dir,
-            raw_query=raw_q,
-            content_type=None,
-            api_path_prefixes=api_path_prefixes,
-        )
-        if destination_hint is None:
-            await route.continue_()
-            return
+        if request.resource_type != "document":
+            destination = _destination_for_asset(
+                url,
+                base_url,
+                out_dir,
+                raw_query=raw_q,
+                content_type=None,
+                api_path_prefixes=api_path_prefixes,
+                max_query_len_for_fs_mapping=max_query_len_for_fs_mapping,
+            )
+            if destination is None:
+                await route.continue_()
+                return
 
-        if destination_hint.exists():
-            mirrored_urls.add(url_key)
-            await route.continue_()
-            return
+            if destination.exists():
+                mirrored_urls.add(url_key)
+                await route.continue_()
+                return
 
         inflight_urls.add(url_key)
         try:
-            response = await route.fetch(timeout=_ROUTE_FETCH_TIMEOUT_MS)
+            response = await route.fetch(timeout=route_fetch_timeout)
 
             # Keep redirects and non-success responses untouched.
             if response.status in range(
@@ -182,6 +198,11 @@ async def attach_route_mirror(
             with contextlib.suppress(Exception):
                 content_type = response.headers.get("content-type")
 
+            # HTML documents are saved from DOM via save_html(), not via route mirror.
+            if request.resource_type == "document" and _is_html_content_type(content_type):
+                await route.fulfill(response=response)
+                return
+
             destination = _destination_for_asset(
                 url,
                 base_url,
@@ -189,6 +210,7 @@ async def attach_route_mirror(
                 raw_query=raw_q,
                 content_type=content_type,
                 api_path_prefixes=api_path_prefixes,
+                max_query_len_for_fs_mapping=max_query_len_for_fs_mapping,
             )
 
             written = False
@@ -206,7 +228,9 @@ async def attach_route_mirror(
             with contextlib.suppress(Exception):
                 path = url.path or ""
                 if "/_next/data/" in path and path.endswith(".json") and body:
-                    urls = extract_urls_from_json_bytes(body, base_url, api_path_prefixes)
+                    urls = extract_urls_from_json_bytes(
+                        body, base_url, api_path_prefixes, max_url_len, candidate_url_trim_chars
+                    )
                     if urls:
                         await ctx.add_requests(urls)
 

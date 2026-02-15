@@ -13,6 +13,16 @@ def test_clean_base_url() -> None:
         cli.clean_base_url("not a url")
 
 
+def test_clean_max_confidence_for_not_export() -> None:
+    almost_one = 0.9999
+    assert cli.clean_max_confidence_for_not_export(0.0) == 0.0
+    assert cli.clean_max_confidence_for_not_export(almost_one) == almost_one
+
+    with pytest.raises(typer.BadParameter) as exc:
+        cli.clean_max_confidence_for_not_export(1.0)
+    assert exc.value.param_hint and "--max-confidence-for-not-export" in exc.value.param_hint
+
+
 def test_clean_login_options_not_required() -> None:
     assert cli.clean_login_options(False, None, None, None, None, None) == ("", "", "", "", "")
 

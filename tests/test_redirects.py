@@ -63,7 +63,14 @@ def test_private_helpers_edge_cases() -> None:
 
 
 def test_write_server_redirect_rules_from_http_observations(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
 
     source = _NavRequest("https://example.com/", status=302)
     target = _NavRequest(
@@ -82,7 +89,14 @@ def test_write_server_redirect_rules_from_http_observations(tmp_path: Path) -> N
 
 
 def test_write_server_redirect_rules_prefers_http_in_tie(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
 
     source = _NavRequest("https://example.com/", status=301)
     target = _NavRequest("https://example.com/http", status=200, redirected_from=source)
@@ -97,7 +111,14 @@ def test_write_server_redirect_rules_prefers_http_in_tie(tmp_path: Path) -> None
 
 
 def test_write_server_redirect_rules_skips_query_sources(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
 
     collector.observe_client_redirect(
         "https://example.com/search?q=1", "https://example.com/problems"
@@ -111,7 +132,14 @@ def test_write_server_redirect_rules_skips_query_sources(tmp_path: Path) -> None
 
 
 def test_observe_http_redirects_ignores_invalid_shapes(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
 
     class _NoRequestResponse:
         request = None
@@ -156,7 +184,14 @@ def test_observe_http_redirects_ignores_invalid_shapes(tmp_path: Path) -> None:
 
 
 def test_export_skips_low_confidence_candidates(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
     # Same source/target must be ignored.
     collector.observe_client_redirect("https://example.com/", "https://example.com")
     collector.observe_client_redirect("https://example.com/", "https://example.com/a")
@@ -168,7 +203,14 @@ def test_export_skips_low_confidence_candidates(tmp_path: Path) -> None:
 
 
 def test_write_html_redirect_pages(tmp_path: Path) -> None:
-    collector = RedirectCollector(URL("https://example.com"), ["/api"])
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
 
     collector.observe_client_redirect("https://example.com/", "https://example.com/problems")
     collector.observe_client_redirect(
@@ -194,3 +236,54 @@ def test_write_html_redirect_pages(tmp_path: Path) -> None:
     assert 'meta http-equiv="refresh" content="0; url=/problems"' in root_html
     assert 'window.location.replace("/problems")' in query_html
     assert existing.read_text(encoding="utf-8") == "existing"
+
+
+def test_client_redirect_uses_configured_default_status(tmp_path: Path) -> None:
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=307,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
+    collector.observe_client_redirect("https://example.com/from", "https://example.com/to")
+
+    caddy = collector.write_server_redirect_rules(
+        tmp_path, max_confidence_for_not_export=0.0
+    ).read_text(encoding="utf-8")
+    assert "redir /from /to 307" in caddy
+
+
+def test_http_chain_respects_configured_min_length(tmp_path: Path) -> None:
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=8000,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=3,
+    )
+    source = _NavRequest("https://example.com/start", status=302)
+    target = _NavRequest("https://example.com/end", status=200, redirected_from=source)
+    asyncio.run(collector.observe_http_redirects_from_response(_NavResponse(target)))
+
+    caddy = collector.write_server_redirect_rules(
+        tmp_path, max_confidence_for_not_export=0.0
+    ).read_text(encoding="utf-8")
+    assert "rules_written: 0" in caddy
+
+
+def test_write_html_redirect_pages_respects_configured_max_query_len(tmp_path: Path) -> None:
+    collector = RedirectCollector(
+        URL("https://example.com"),
+        ["/api"],
+        max_query_len_for_fs_mapping=3,
+        default_server_redirect_status=302,
+        max_confidence_for_not_export=0.5,
+        min_redirect_chain_len=2,
+    )
+    collector.observe_client_redirect("https://example.com/search?abcd", "https://example.com/to")
+
+    stats = collector.write_html_redirect_pages(tmp_path, max_confidence_for_not_export=0.0)
+    assert stats == {"created": 0, "skipped_existing": 0, "skipped_unsafe_query": 1}
