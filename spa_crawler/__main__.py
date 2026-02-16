@@ -1,4 +1,5 @@
 import asyncio
+from http.client import BAD_REQUEST
 from pathlib import Path
 from typing import Annotated
 
@@ -20,7 +21,6 @@ from spa_crawler.config import CrawlConfig
 from spa_crawler.constants import DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES
 from spa_crawler.crawler import crawl
 
-_HTTP_STATUS_CLIENT_ERROR_MIN = 400
 _HTTP_STATUS_SERVER_ERROR_MAX = 599
 
 
@@ -57,15 +57,7 @@ def main(
         int, typer.Option(min=1, clamp=True, help="Maximum crawler concurrency.")
     ] = 100,
     desired_concurrency: Annotated[
-        int,
-        typer.Option(
-            min=1,
-            clamp=True,
-            help=(
-                "Desired crawler concurrency. Must be greater than or equal to '--min-concurrency' "
-                "and less than or equal to '--max-concurrency'."
-            ),
-        ),
+        int, typer.Option(min=1, clamp=True, help="Desired crawler concurrency.")
     ] = 10,
     out_dir: Annotated[
         Path,
@@ -86,37 +78,35 @@ def main(
     include_links_regex: Annotated[
         list[str] | None,
         typer.Option(
-            help=(
-                "Regular expressions to include links. If none are provided, "
-                "'{base_url}/**' glob is used by default."
-            )
+            help="Regular expressions to include links.",
+            show_default="If no globs/regexes are provided, '{base_url}/**' glob is used.",
         ),
     ] = None,
     exclude_links_regex: Annotated[
         list[str] | None,
         typer.Option(
-            help=(
-                "Regular expressions to exclude links. If '--login-required' is true and "
-                "no exclude patterns are provided, '.*{login_path}.*' is used by default."
-            )
+            help="Regular expressions to exclude links.",
+            show_default=(
+                "If '--login-required' is true and no globs/regexes are provided, "
+                "'.*{login_path}.*' regex is used."
+            ),
         ),
     ] = None,
     include_links_glob: Annotated[
         list[str] | None,
         typer.Option(
-            help=(
-                "Glob patterns to include links. If none are provided, "
-                "'{base_url}/**' glob is used by default."
-            )
+            help="Glob patterns to include links.",
+            show_default="If no globs/regexes are provided, '{base_url}/**' glob is used.",
         ),
     ] = None,
     exclude_links_glob: Annotated[
         list[str] | None,
         typer.Option(
-            help=(
-                "Glob patterns to exclude links. If '--login-required' is true and "
-                "no exclude patterns are provided, '.*{login_path}.*' is used by default."
-            )
+            help="Glob patterns to exclude links.",
+            show_default=(
+                "If '--login-required' is true and no globs/regexes are provided, "
+                "'.*{login_path}.*' regex is used."
+            ),
         ),
     ] = None,
     dom_content_loaded_timeout: Annotated[
@@ -157,13 +147,10 @@ def main(
     ignore_http_error_status_code: Annotated[
         list[int] | None,
         typer.Option(
-            min=_HTTP_STATUS_CLIENT_ERROR_MIN,
+            min=BAD_REQUEST,
             max=_HTTP_STATUS_SERVER_ERROR_MAX,
-            help=(
-                "HTTP error status codes to ignore. Defaults: "
-                + ", ".join(str(code) for code in DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES)
-                + "."
-            ),
+            help="HTTP error status codes to ignore.",
+            show_default=", ".join(str(code) for code in DEFAULT_IGNORED_HTTP_ERROR_STATUS_CODES),
         ),
     ] = None,
     api_path_prefix: Annotated[list[str] | None, typer.Option(help="API path prefixes.")] = None,
@@ -188,7 +175,7 @@ def main(
             max=399,
             help=(
                 "Default HTTP redirect status code used for redirects that do not have "
-                "their own HTTP status code (e.g., window.location changes)."
+                "their own HTTP status code (e.g., 'window.location' changes)."
             ),
         ),
     ] = 302,

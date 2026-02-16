@@ -2,6 +2,7 @@ import contextlib
 import mimetypes
 from collections.abc import Sequence
 from email.message import Message
+from http.client import BAD_REQUEST, MULTIPLE_CHOICES, OK
 from pathlib import Path
 
 from crawlee.crawlers import PlaywrightCrawlingContext, PlaywrightPreNavCrawlingContext
@@ -9,7 +10,6 @@ from playwright.async_api import Request as PWRequest
 from playwright.async_api import Route
 from yarl import URL
 
-from spa_crawler.constants import HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE, HTTP_STATUS_REDIRECT_MIN
 from spa_crawler.url_discovery import extract_urls_from_json_bytes, looks_like_api_path
 from spa_crawler.utils import (
     raw_query_from_url,
@@ -17,8 +17,6 @@ from spa_crawler.utils import (
     safe_relative_path_for_page,
     safe_relative_path_for_query,
 )
-
-_HTTP_STATUS_SUCCESS_MIN = 200
 
 
 def _media_type_from_content_type(content_type: str | None) -> str | None:
@@ -185,10 +183,8 @@ async def attach_route_mirror(
 
             # Keep redirects and non-success responses untouched.
             if response.status in range(
-                HTTP_STATUS_REDIRECT_MIN, HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE
-            ) or response.status not in range(
-                _HTTP_STATUS_SUCCESS_MIN, HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE
-            ):
+                MULTIPLE_CHOICES, BAD_REQUEST
+            ) or response.status not in range(OK, BAD_REQUEST):
                 await route.fulfill(response=response)
                 return
 

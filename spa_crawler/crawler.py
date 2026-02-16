@@ -188,6 +188,7 @@ async def crawl(config: CrawlConfig) -> None:
             )
         except Exception as e:
             ctx.log.warning(f"[route-mirror-attach-error] {ctx.request.url}: {e!r}")
+
         maybe_attach_download_hook(ctx, verbose)
 
     crawler.pre_navigation_hook(_pre_nav)

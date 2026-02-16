@@ -3,13 +3,13 @@ from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from html import escape
+from http.client import BAD_REQUEST, MULTIPLE_CHOICES
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
 from yarl import URL
 
-from spa_crawler.constants import HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE, HTTP_STATUS_REDIRECT_MIN
 from spa_crawler.url_discovery import looks_like_api_path
 from spa_crawler.utils import (
     canonicalize_page_url,
@@ -152,11 +152,7 @@ class RedirectCollector:
                 continue
 
             status = getattr(source_response, "status", None)
-            if (
-                not isinstance(status, int)
-                or status < HTTP_STATUS_REDIRECT_MIN
-                or status >= HTTP_STATUS_REDIRECT_MAX_EXCLUSIVE
-            ):
+            if not isinstance(status, int) or status < MULTIPLE_CHOICES or status >= BAD_REQUEST:
                 continue
 
             self._http_targets[source][target] += 1
